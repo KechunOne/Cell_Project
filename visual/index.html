@@ -1,48 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Visual</title>
+  <meta charset="UTF-8">
+  <title>Visual Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/addons/p5.sound.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: #111;
-    }
-    #ball {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: white;
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-    }
-  </style>
 </head>
 <body>
-  <div id="ball"></div>
+<script>
+let CONFIG = {
+  cellCount: 15,
+  otherScaleMin: 15,
+  otherScaleMax: 35,
+  otherRingCountMin: 10,
+  otherRingCountMax: 47,
+  otherStrokeAlphaMin: 15,
+  otherStrokeAlphaMax: 60,
+  playerSaturation: 1.5,
+  playerAlpha: 300,
+  rocketSpawnRate: 0.05,
+  rocketSpeed: 8,
+  noiseDensity: 20000,
+  noiseAlpha: 100,
+  gridSize: 50,
+  gridColor: 200,
+  gridAlpha: 180,
+  showGridLabels: true,
+  gridTextColor: 120,
+  showDataText: true
+};
 
-  <script>
-    const socket = io();
-    const ball = document.getElementById("ball");
+// ==========================================
+// 核心数据
+// ==========================================
+let cells = [];
+let rockets = [];
+let obstacles = [];
+let playerCell;
+let sensorData = { x: 0, y: 0 };
+let hitSound;
+let socket;
 
-    let x = window.innerWidth / 2;
-    let y = window.innerHeight / 2;
+function preload() {
+  hitSound = loadSound("https://freesound.org/data/previews/170/170518_2437358-lq.mp3"); 
+}
 
-    socket.on("motion", (data) => {
-      x += data.x * 2;
-      y += data.y * 2;
+function setup() {
+  createCanvas(windowWidth, windowHeight);
 
-      x = Math.max(0, Math.min(window.innerWidth - 60, x));
-      y = Math.max(0, Math.min(window.innerHeight - 60, y));
+  socket = io();
+  socket.on("motion", (data) => {
+    sensorData.x = data.x;
+    sensorData.y = data.y;
+  });
 
-      ball.style.left = x + "px";
-      ball.style.top = y + "px";
-    });
-  </script>
+  for (let i = 0; i < CONFIG.cellCount; i++) {
+    cells.push(new BioCell(random(width), random(height), false));
+  }
+
+  // 玩家彩色大球
+  playerCell = new BioCell(width/2, height/2, true);
+
+  // 黑色障碍方块
+  for (let i=0;i<5;i++){
+    obstacles.push({x: random(width), y: random(height), w: 80, h: 80});
+  }
+
+  textFont('Courier New'); 
+  textStyle(BOLD);
+}
+
+function draw() {
+  background(240);
+  drawGridSystem();
+  drawNoisyBackground();
+
+  // 玩家逻辑
+  playerCell.applySensorForce(sensorData.x, sensorData.y);
+  playerCell.update();
+  playerCell.display();
+  playerCell.checkEdges();
+  playerCell.checkObstacleCollision(obstacles);
+
+  // 普通细胞逻辑
+  for (let c of cells) {
+    c.autonomousMove();
+    c.update();
+    c.display();
+    c.checkEdges();
+
+    if (playerCell.intersects(c)) {
+      playerCell.resolveCollision(c);
+      hitSound.play();
+    }
+    for (let other of cells) {
+      if (c !== other && c.intersects(other)) c.resolveCollision(other);
+    }
+  }
+
+  // 绘制黑色方块
+  fill(0);
+  noStroke();
+  for (let o of obstacles) {
+    rect(o.x, o.y, o.w, o.h);
+  }
+
+  drawUI();
+}
+
+BioCell.prototype.checkObstacleCollision = function(obs){
+  for(let o of obs){
+    let closestX = constrain(this.pos.x, o.x, o.x + o.w);
+    let closestY = constrain(this.pos.y, o.y, o.y + o.h);
+    let dx = this.pos.x - closestX;
+    let dy = this.pos.y - closestY;
+    let distSq = dx*dx + dy*dy;
+    if(distSq < this.r*this.r){
+      let push = createVector(dx, dy).normalize().mult(5);
+      this.pos.add(push);
+      this.vel.mult(0.5);
+    }
+  }
+}
+
+// ==========================================
+// grid, noisy background, UI 保持不变
+// ==========================================
+function drawGridSystem() { /* 复制你原来的函数 */ }
+function drawNoisyBackground() { /* 复制你原来的函数 */ }
+function drawUI() {
+  fill(0); noStroke(); textSize(12); textAlign(LEFT);
+  text("SYSTEM: ONLINE", 20, 30);
+  text(`CELLS: ${cells.length}`, 20, 50);
+  text(`INPUT X: ${sensorData.x.toFixed(2)}`, 20, 90);
+  text(`INPUT Y: ${sensorData.y.toFixed(2)}`, 20, 105);
+}
+
+// ==========================================
+// BioCell 类 & Rocket 类 保持原来的逻辑，只需加 checkObstacleCollision
+// ==========================================
+class BioCell { /* 原来的完整类代码 */ }
+class Rocket { /* 原来的完整类代码 */ }
+
+function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+</script>
 </body>
 </html>
