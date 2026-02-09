@@ -5,54 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mobile Controller</title>
   <script src="/socket.io/socket.io.js"></script>
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: black;
-      color: white;
-      font-size: 20px;
-      text-align: center;
-    }
-  </style>
 </head>
 <body>
-  Tap once, then move your phone
+  <h1>Tap once, then move your phone</h1>
 
   <script>
+    // 连接 Socket.IO
     const socket = io();
+    console.log("Socket.IO script loaded");
 
-    document.body.addEventListener(
-      "click",
-      async () => {
-        console.log("tap received");
+    socket.on("connect", () => {
+      console.log("Connected to server, id:", socket.id);
+    });
 
-        if (
-          typeof DeviceMotionEvent !== "undefined" &&
-          typeof DeviceMotionEvent.requestPermission === "function"
-        ) {
+    // 点击请求陀螺仪权限
+    document.body.addEventListener("click", async () => {
+      console.log("Tap received");
+
+      if (typeof DeviceMotionEvent !== "undefined" &&
+          typeof DeviceMotionEvent.requestPermission === "function") {
+        try {
           const res = await DeviceMotionEvent.requestPermission();
           console.log("permission:", res);
 
-          if (res === "granted") startMotion();
-          else alert("陀螺仪权限被拒绝");
-        } else {
-          startMotion();
+          if (res === "granted") {
+            startMotion();
+          } else {
+            alert("陀螺仪权限被拒绝");
+          }
+        } catch (err) {
+          console.error("requestPermission error:", err);
         }
-      },
-      { once: true }
-    );
+      } else {
+        startMotion();
+      }
+    }, { once: true });
 
+    // 开始监听手机运动
     function startMotion() {
-      console.log("motion started");
+      console.log("Motion started");
 
       window.addEventListener("devicemotion", (e) => {
         const x = e.accelerationIncludingGravity?.x || 0;
         const y = e.accelerationIncludingGravity?.y || 0;
 
+        console.log(`Motion data x:${x.toFixed(2)}, y:${y.toFixed(2)}`);
         socket.emit("motion", { x, y });
       });
     }
