@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mobile Controller</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: black;
+      color: white;
+      font-size: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  Tap once, then move your phone
+
+  <script>
+    const socket = io();
+
+    document.body.addEventListener(
+      "click",
+      async () => {
+        console.log("tap received");
+
+        if (
+          typeof DeviceMotionEvent !== "undefined" &&
+          typeof DeviceMotionEvent.requestPermission === "function"
+        ) {
+          const res = await DeviceMotionEvent.requestPermission();
+          console.log("permission:", res);
+
+          if (res === "granted") startMotion();
+          else alert("陀螺仪权限被拒绝");
+        } else {
+          startMotion();
+        }
+      },
+      { once: true }
+    );
+
+    function startMotion() {
+      console.log("motion started");
+
+      window.addEventListener("devicemotion", (e) => {
+        const x = e.accelerationIncludingGravity?.x || 0;
+        const y = e.accelerationIncludingGravity?.y || 0;
+
+        socket.emit("motion", { x, y });
+      });
+    }
+  </script>
+</body>
+</html>

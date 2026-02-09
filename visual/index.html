@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+    }
+    #ball {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: white;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <div id="ball"></div>
+
+  <script>
+    const socket = io();
+    const ball = document.getElementById("ball");
+
+    let x = window.innerWidth / 2;
+    let y = window.innerHeight / 2;
+
+    socket.on("motion", (data) => {
+      x += data.x * 2;
+      y += data.y * 2;
+
+      x = Math.max(0, Math.min(window.innerWidth - 60, x));
+      y = Math.max(0, Math.min(window.innerHeight - 60, y));
+
+      ball.style.left = x + "px";
+      ball.style.top = y + "px";
+    });
+  </script>
+</body>
+</html>
